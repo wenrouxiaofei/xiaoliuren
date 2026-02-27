@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>小六壬寻物工具（双模式）</title>
+    <style>
+        body {
+            font-family: "Microsoft YaHei", sans-serif;
+            max-width: 700px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 25px;
+        }
+        .mode-select {
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: #f9f9f9;
+            border-radius: 6px;
+        }
+        .mode-option {
+            margin-right: 20px;
+            cursor: pointer;
+        }
+        .input-section {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 10px;
+            color: #666;
+            font-size: 16px;
+        }
+        textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            resize: none;
+            font-size: 15px;
+            margin-bottom: 15px;
+        }
+        .number-inputs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .number-inputs input {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 15px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .result-section {
+            margin-top: 25px;
+            padding: 20px;
+            border: 1px solid #eee;
+            border-radius: 6px;
+            display: none;
+        }
+        .result-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #333;
+        }
+        .result-item {
+            margin: 10px 0;
+            line-height: 1.6;
+        }
+        .highlight {
+            color: #d32f2f;
+            font-weight: bold;
+        }
+        .disclaimer {
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px dashed #ddd;
+            font-size: 12px;
+            color: #888;
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>小六壬寻物测算</h1>
+        
+        <!-- 模式选择 -->
+        <div class="mode-select">
+            <label>选择测算模式：</label>
+            <div class="mode-option">
+                <input type="radio" id="timeMode" name="mode" value="time" checked>
+                <label for="timeMode">按当前时间测算</label>
+            </div>
+            <div class="mode-option">
+                <input type="radio" id="numberMode" name="mode" value="number">
+                <label for="numberMode">按输入数字测算（3个数字）</label>
+            </div>
+        </div>
+        
+        <!-- 时间模式输入区 -->
+        <div id="timeInputSection" class="input-section">
+            <label for="questionTime">请输入您丢失物品的问题（例如：我的手机在哪里？）</label>
+            <textarea id="questionTime" rows="3" placeholder="请输入问题..."></textarea>
+        </div>
+        
+        <!-- 数字模式输入区（默认隐藏） -->
+        <div id="numberInputSection" class="input-section hidden">
+            <label for="questionNumber">请输入您丢失物品的问题：</label>
+            <textarea id="questionNumber" rows="3" placeholder="请输入问题..."></textarea>
+            <label>请输入3个数字（1-99之间，用数字对应时辰/方位）：</label>
+            <div class="number-inputs">
+                <input type="number" id="num1" min="1" max="99" placeholder="数字1">
+                <input type="number" id="num2" min="1" max="99" placeholder="数字2">
+                <input type="number" id="num3" min="1" max="99" placeholder="数字3">
+            </div>
+        </div>
+        
+        <button onclick="calculateResult()">开始测算</button>
+        
+        <div id="result" class="result-section">
+            <div class="result-title">测算结果</div>
+            <div id="timeResultInfo" class="result-item hidden">
+                <span>当前农历时间：</span>
+                <span id="lunarDate" class="highlight"></span>
+            </div>
+            <div id="numberResultInfo" class="result-item hidden">
+                <span>输入数字：</span>
+                <span id="inputNumbers" class="highlight"></span>
+            </div>
+            <div class="result-item">
+                <span>对应卦象：</span>
+                <span id="hexagram" class="highlight"></span>
+            </div>
+            <div class="result-item">
+                <span>建议寻找方位：</span>
+                <span id="direction" class="highlight"></span>
+            </div>
+            <div class="result-item">
+                <span>寻物提示：</span>
+                <span id="hint"></span>
+            </div>
+            <div class="disclaimer">
+                ⚠️ 声明：本工具仅为民俗文化娱乐参考，不代表科学结论，请理性对待。
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 六神数据（固定顺序：大安、留连、速喜、赤口、小吉、空亡）
+        const hexagramData = [
+            {
+                name: "大安",
+                direction: "东方",
+                hint: "物品在近处，较为安全，可能在室内东侧的柜子、抽屉或书架等地方，耐心寻找即可发现。"
+            },
+            {
+                name: "留连",
+                direction: "南方",
+                hint: "物品可能被遮挡或遗忘在潮湿处（如厨房、卫生间），寻找过程可能较久，需仔细排查角落。"
+            },
+            {
+                name: "速喜",
+                direction: "西方",
+                hint: "物品在显眼位置，容易找到，可能在西侧的桌子、窗台或金属器物附近，很快能发现。"
+            },
+            {
+                name: "赤口",
+                direction: "北方",
+                hint: "物品可能被移动，多在北侧的墙角、门缝或工具旁等有尖锐物的位置，留意地面或夹缝。"
+            },
+            {
+                name: "小吉",
+                direction: "东南方",
+                hint: "物品在低矮处或缝隙中（如沙发下、床底、抽屉角落），东南方向的家具下方可重点查找。"
+            },
+            {
+                name: "空亡",
+                direction: "西北方",
+                hint: "物品可能在西北方向的杂物堆或衣柜深处，或丢失较远，建议回忆最近去过的地方。"
+            }
+        ];
+
+        // 模式切换逻辑
+        document.getElementById("timeMode").addEventListener("change", function() {
+            document.getElementById("timeInputSection").classList.remove("hidden");
+            document.getElementById("numberInputSection").classList.add("hidden");
+        });
+
+        document.getElementById("numberMode").addEventListener("change", function() {
+            document.getElementById("timeInputSection").classList.add("hidden");
+            document.getElementById("numberInputSection").classList.remove("hidden");
+        });
+
+        // 2025年公历转农历对照表（简化版）
+        function getLunarDate(year, month, day) {
+            const lunarMap = [
+                [1, 1, 11, 11], [1, 20, 12, 1], [2, 18, 1, 1], [3, 20, 2, 1],
+                [4, 19, 3, 1], [5, 20, 4, 1], [6, 20, 5, 1], [7, 21, 6, 1],
+                [8, 21, 7, 1], [9, 20, 8, 1], [10, 20, 9, 1], [11, 18, 10, 1],
+                [12, 18, 11, 1], [12, 31, 11, 14]
+            ];
+            for (let i = 0; i < lunarMap.length; i++) {
+                const [sM, sD, lM, lD] = lunarMap[i];
+                const next = lunarMap[i + 1] || [13, 32, 0, 0];
+                if ((month > sM) || (month === sM && day >= sD)) {
+                    if ((month < next[0]) || (month === next[0] && day < next[1])) {
+                        return { month: lM, day: lD };
+                    }
+                }
+            }
+            return { month: 12, day: 30 };
+        }
+
+        // 时辰转换（24小时制→1-12）
+        function getTimeIndex(hour) {
+            if (hour >= 23 || hour < 1) return 1;
+            if (hour >= 1 && hour < 3) return 2;
+            if (hour >= 3 && hour < 5) return 3;
+            if (hour >= 5 && hour < 7) return 4;
+            if (hour >= 7 && hour < 9) return 5;
+            if (hour >= 9 && hour < 11) return 6;
+            if (hour >= 11 && hour < 13) return 7;
+            if (hour >= 13 && hour < 15) return 8;
+            if (hour >= 15 && hour < 17) return 9;
+            if (hour >= 17 && hour < 19) return 10;
+            if (hour >= 19 && hour < 21) return 11;
+            if (hour >= 21 && hour < 23) return 12;
+            return 1;
+        }
+
+        // 核心计算函数（支持双模式）
+        function calculateResult() {
+            // 获取当前选中的模式
+            const isTimeMode = document.getElementById("timeMode").checked;
+            let question, finalPos;
+
+            // 验证输入并计算
+            if (isTimeMode) {
+                // 时间模式
+                question = document.getElementById("questionTime").value.trim();
+                if (!question) {
+                    alert("请输入您要查询的问题！");
+                    return;
+                }
+
+                // 时间模式计算逻辑
+                const now = new Date();
+                const year = now.getFullYear();
+                const month = now.getMonth() + 1;
+                const day = now.getDate();
+                const hour = now.getHours();
+                const lunar = getLunarDate(year, month, day);
+                const lunarMonth = lunar.month;
+                const lunarDay = lunar.day;
+                const timeIndex = getTimeIndex(hour);
+                const 时辰名称 = ["子", "丑", "寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥"][timeIndex - 1];
+
+                // 计算卦象位置
+                let dayPos = (lunarMonth - 1) % 6;
+                dayPos = (dayPos + lunarDay) % 6;
+                finalPos = (dayPos + timeIndex) % 6;
+
+                // 显示时间模式结果信息
+                document.getElementById("lunarDate").textContent = `${lunarMonth}月${lunarDay}日 ${时辰名称}时`;
+                document.getElementById("timeResultInfo").classList.remove("hidden");
+                document.getElementById("numberResultInfo").classList.add("hidden");
+
+            } else {
+                // 数字模式
+                question = document.getElementById("questionNumber").value.trim();
+                const num1 = parseInt(document.getElementById("num1").value);
+                const num2 = parseInt(document.getElementById("num2").value);
+                const num3 = parseInt(document.getElementById("num3").value);
+
+                // 验证数字输入
+                if (!question) {
+                    alert("请输入您要查询的问题！");
+                    return;
+                }
+                if (isNaN(num1) || isNaN(num2) || isNaN(num3) || num1 < 1 || num2 < 1 || num3 < 1) {
+                    alert("请输入有效的3个数字（1-99之间）！");
+                    return;
+                }
+
+                // 数字模式计算逻辑（小六壬数字规则：3个数字依次累加取模6）
+                let pos = (num1 - 1) % 6;  // 第一个数字对应初始位置（1→0，2→1...）
+                pos = (pos + num2) % 6;    // 加第二个数字
+                finalPos = (pos + num3) % 6;  // 加第三个数字，最终位置
+
+                // 显示数字模式结果信息
+                document.getElementById("inputNumbers").textContent = `${num1}, ${num2}, ${num3}`;
+                document.getElementById("numberResultInfo").classList.remove("hidden");
+                document.getElementById("timeResultInfo").classList.add("hidden");
+            }
+
+            // 显示共用结果
+            const result = hexagramData[finalPos];
+            document.getElementById("hexagram").textContent = result.name;
+            document.getElementById("direction").textContent = result.direction;
+            document.getElementById("hint").textContent = result.hint;
+            document.getElementById("result").style.display = "block";
+        }
+    </script>
+</body>
+</html>
